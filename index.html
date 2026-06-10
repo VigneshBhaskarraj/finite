@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07070b">
+  <meta name="description" content="FINITE — a live dashboard of the one life you have. Heartbeats, weeks, and what remains. Computed on your device, shared with no one.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FINITE — your one life, live</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <noscript>
+    <p style="padding:2rem;color:#eee;font-family:sans-serif">FINITE needs JavaScript — every number on this page is computed live, on your device.</p>
+  </noscript>
+
+  <!-- ====================== ONBOARDING ====================== -->
+  <div id="onboarding" class="onboarding" hidden>
+
+    <section class="ob-screen" data-step="0">
+      <div class="ob-mark" aria-hidden="true"><span class="ob-pulse"></span></div>
+      <h1 class="wordmark">FINITE</h1>
+      <p class="ob-lede">A human life is about<br><strong>4,000 weeks</strong> long.</p>
+      <p class="ob-sub">This app shows you yours — beating, ticking, and counting down — live.</p>
+      <p class="ob-privacy">Everything is computed on this device.<br>No account. No server. No one is watching.</p>
+      <button class="btn btn-primary" data-next>I'm ready</button>
+    </section>
+
+    <section class="ob-screen" data-step="1" hidden>
+      <h2 class="ob-q">When did you arrive?</h2>
+      <p class="ob-sub">The moment your clock started.</p>
+      <input type="date" id="ob-birth" class="input-date" aria-label="Your date of birth">
+      <p class="ob-error" id="ob-birth-error" hidden>That date doesn't work — pick the day you were born.</p>
+      <button class="btn btn-primary" data-next>Continue</button>
+    </section>
+
+    <section class="ob-screen" data-step="2" hidden>
+      <h2 class="ob-q">How long is your runway?</h2>
+      <p class="ob-sub">Pick a horizon. Be optimistic — but be honest.</p>
+      <div class="horizon-readout"><span id="ob-horizon-value">90</span><small> years</small></div>
+      <input type="range" id="ob-horizon" min="60" max="110" value="90" step="1" aria-label="Life horizon in years">
+      <p class="ob-hint">Global average is ~73. Plenty of people see 95.</p>
+      <button class="btn btn-primary" data-next>Continue</button>
+    </section>
+
+    <section class="ob-screen" data-step="3" hidden>
+      <h2 class="ob-q">Someone you love</h2>
+      <p class="ob-sub">A parent, a grandparent, an old friend you only see sometimes. This one is optional — and it's the one that gets people.</p>
+      <label class="field"><span>Their age</span>
+        <input type="number" id="ob-parent-age" min="1" max="110" inputmode="numeric" placeholder="e.g. 62">
+      </label>
+      <label class="field"><span>Times you see them per year</span>
+        <input type="number" id="ob-parent-visits" min="1" max="365" inputmode="numeric" placeholder="e.g. 4">
+      </label>
+      <button class="btn btn-primary" data-finish>Show me my life</button>
+      <button class="btn btn-ghost" data-skip>Skip this</button>
+    </section>
+
+  </div>
+
+  <!-- ====================== APP ====================== -->
+  <div id="app" hidden>
+
+    <header class="topbar">
+      <span class="wordmark small">FINITE</span>
+      <div class="topbar-actions">
+        <button id="btn-install" class="btn btn-chip" hidden>⊕ Install</button>
+        <button id="btn-settings" class="btn btn-icon" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- NOW -->
+    <section class="panel hero">
+      <p class="kicker">Right now</p>
+      <h2 class="hero-line">Your body is keeping time.</h2>
+
+      <div class="stat stat-hero">
+        <div class="stat-value"><span class="heart" aria-hidden="true">●</span> <span id="v-heartbeats">—</span></div>
+        <div class="stat-label">heartbeats so far <em>(~72 a minute, and not one repeated)</em></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-value" id="v-breaths">—</div><div class="stat-label">breaths taken</div></div>
+        <div class="stat"><div class="stat-value" id="v-seconds">—</div><div class="stat-label">seconds alive</div></div>
+        <div class="stat wide"><div class="stat-value" id="v-distance">—</div><div class="stat-label">kilometres you've travelled around the Sun — you are moving at 29.78&nbsp;km/s right now</div></div>
+      </div>
+    </section>
+
+    <!-- LIFE AS ONE DAY -->
+    <section class="panel">
+      <p class="kicker">One day</p>
+      <h2 class="hero-line">Your whole life, as a single day.</h2>
+      <p class="prose">Midnight is birth. The next midnight is your horizon. The clock below never stops, and it only moves in one direction.</p>
+      <div class="lifeclock">
+        <div class="lifeclock-time" id="v-lifeclock">--:--:--</div>
+        <div class="lifeclock-caption" id="v-lifeclock-caption">in your life right now</div>
+      </div>
+      <div class="dayband" aria-hidden="true">
+        <div class="dayband-marker" id="dayband-marker"></div>
+      </div>
+      <div class="dayband-labels" aria-hidden="true"><span>birth</span><span>noon</span><span>horizon</span></div>
+    </section>
+
+    <!-- THE MAP -->
+    <section class="panel">
+      <p class="kicker">The map</p>
+      <h2 class="hero-line">Every week you have, on one screen.</h2>
+      <p class="prose">Each dot is one week. <span class="lg-ember">Ember</span> dots are spent. The bright one is <strong>this week</strong> — tap any dot to time-travel.</p>
+      <div class="weekstats">
+        <div><span id="v-weeknum">—</span><small>this is week</small></div>
+        <div><span id="v-weekstotal">—</span><small>of roughly</small></div>
+        <div><span id="v-weeksleft">—</span><small>remain</small></div>
+      </div>
+      <div class="gridwrap">
+        <canvas id="weeks-canvas"></canvas>
+        <div id="week-tip" class="week-tip" hidden></div>
+      </div>
+      <div class="pctline">
+        <span id="v-pct">—</span><span class="pct-label">of your weeks used — watch it move</span>
+      </div>
+    </section>
+
+    <!-- WHAT REMAINS -->
+    <section class="panel">
+      <p class="kicker">What remains</p>
+      <h2 class="hero-line">The arithmetic no one does.</h2>
+      <p class="prose">If your horizon holds, this is what's statistically left in the jar:</p>
+
+      <div class="cards" id="remains-cards">
+        <div class="card"><div class="card-num" id="r-sunrises">—</div><div class="card-label">sunrises</div></div>
+        <div class="card"><div class="card-num" id="r-saturdays">—</div><div class="card-label">Saturdays</div></div>
+        <div class="card"><div class="card-num" id="r-summers">—</div><div class="card-label">summers</div></div>
+        <div class="card"><div class="card-num" id="r-moons">—</div><div class="card-label">full moons</div></div>
+      </div>
+
+      <div class="card card-row">
+        <div><div class="card-num" id="r-books">—</div><div class="card-label">books you'll still read</div></div>
+        <label class="mini-field">at <input type="number" id="in-books" min="0" max="200" inputmode="numeric"> a year</label>
+      </div>
+
+      <div class="card card-loved" id="card-parent" hidden>
+        <div class="card-num glow" id="r-parent">—</div>
+        <div class="card-label">more times you may see them<span id="r-parent-detail"></span></div>
+        <p class="card-note">Most of the time you'll ever spend with the people who raised you is already behind you. What's left fits in a number this small. Make the visits count.</p>
+      </div>
+      <button class="btn btn-ghost" id="btn-add-parent" hidden>+ add someone you love</button>
+    </section>
+
+    <!-- PERSPECTIVE -->
+    <section class="panel">
+      <p class="kicker">Perspective</p>
+      <blockquote class="quote" id="v-quote">You will never be younger than you are right now.</blockquote>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="panel footer">
+      <button class="btn btn-primary" id="btn-share">Share my week</button>
+      <p class="ob-privacy">FINITE runs entirely on your device, works offline,<br>and sends nothing anywhere. Your life is yours.</p>
+      <p class="ios-hint" id="ios-hint" hidden>On iPhone: Share&nbsp;→&nbsp;Add&nbsp;to&nbsp;Home&nbsp;Screen to install.</p>
+    </footer>
+
+    <!-- overtime banner -->
+    <div class="overtime" id="overtime" hidden>
+      ★ You have outlived your own horizon. Everything from here is overtime — spend it loudly.
+    </div>
+  </div>
+
+  <!-- ====================== SETTINGS ====================== -->
+  <dialog id="settings" class="settings">
+    <form method="dialog">
+      <h2>Settings</h2>
+      <label class="field"><span>Date of birth</span><input type="date" id="set-birth"></label>
+      <label class="field"><span>Horizon (years): <output id="set-horizon-out">90</output></span>
+        <input type="range" id="set-horizon" min="60" max="110" step="1">
+      </label>
+      <label class="field"><span>Loved one's age (blank to remove)</span><input type="number" id="set-parent-age" min="1" max="110" inputmode="numeric"></label>
+      <label class="field"><span>Visits per year</span><input type="number" id="set-parent-visits" min="1" max="365" inputmode="numeric"></label>
+      <div class="settings-actions">
+        <button class="btn btn-primary" id="set-save" value="save">Save</button>
+        <button class="btn btn-ghost" value="cancel">Cancel</button>
+      </div>
+      <button class="btn btn-danger" id="set-reset" type="button">Erase everything &amp; start over</button>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
