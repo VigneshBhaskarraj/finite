@@ -91,6 +91,31 @@
       </div>
     </section>
 
+    <!-- ZOOM -->
+    <section class="panel">
+      <p class="kicker">Zoom</p>
+      <h2 class="hero-line">Smaller clocks, same arrow.</h2>
+      <p class="prose">The same countdown at four magnifications. None of these bars has ever moved backwards.</p>
+      <div class="zoom-rows">
+        <div class="zoom-row">
+          <div class="zoom-head"><span class="zoom-name">today</span><span class="zoom-pct" id="z-day-pct">—</span></div>
+          <div class="zoom-bar"><div class="zoom-fill" id="z-day-fill"></div></div>
+        </div>
+        <div class="zoom-row">
+          <div class="zoom-head"><span class="zoom-name">this week</span><span class="zoom-pct" id="z-week-pct">—</span></div>
+          <div class="zoom-bar"><div class="zoom-fill" id="z-week-fill"></div></div>
+        </div>
+        <div class="zoom-row">
+          <div class="zoom-head"><span class="zoom-name">this month</span><span class="zoom-pct" id="z-month-pct">—</span></div>
+          <div class="zoom-bar"><div class="zoom-fill" id="z-month-fill"></div></div>
+        </div>
+        <div class="zoom-row">
+          <div class="zoom-head"><span class="zoom-name" id="z-year-name">this year</span><span class="zoom-pct" id="z-year-pct">—</span></div>
+          <div class="zoom-bar"><div class="zoom-fill" id="z-year-fill"></div></div>
+        </div>
+      </div>
+    </section>
+
     <!-- LIFE AS ONE DAY -->
     <section class="panel">
       <p class="kicker">One day</p>
@@ -125,6 +150,15 @@
       </div>
     </section>
 
+    <!-- HORIZONS -->
+    <section class="panel">
+      <p class="kicker">On the horizon</p>
+      <h2 class="hero-line">Name the dots you're living toward.</h2>
+      <p class="prose">Birthdays, trips, finish lines. Each one becomes a <span class="lg-gold">gold ring</span> on your map — tap its week to see it waiting.</p>
+      <div id="horizons-list" class="horizons"></div>
+      <button class="btn btn-ghost" id="btn-add-horizon">+ add a horizon</button>
+    </section>
+
     <!-- WHAT REMAINS -->
     <section class="panel">
       <p class="kicker">What remains</p>
@@ -149,6 +183,19 @@
         <p class="card-note">Most of the time you'll ever spend with the people who raised you is already behind you. What's left fits in a number this small. Make the visits count.</p>
       </div>
       <button class="btn btn-ghost" id="btn-add-parent" hidden>+ add someone you love</button>
+    </section>
+
+    <!-- TODAY -->
+    <section class="panel">
+      <p class="kicker">Today</p>
+      <h2 class="hero-line">Spend one of them on purpose.</h2>
+      <p class="prose">One line, every morning: what would make today count? Small is fine. Honest is better.</p>
+      <form id="intent-form" class="intent-form">
+        <input type="text" id="intent-input" maxlength="140" placeholder="Today counts if I…" autocomplete="off" aria-label="What would make today count?">
+        <button class="btn btn-primary" type="submit" id="intent-save">Set</button>
+      </form>
+      <p class="intent-streak" id="intent-streak" hidden></p>
+      <ul class="intent-log" id="intent-log"></ul>
     </section>
 
     <!-- PERSPECTIVE -->
@@ -184,7 +231,28 @@
         <button class="btn btn-primary" id="set-save" value="save">Save</button>
         <button class="btn btn-ghost" value="cancel">Cancel</button>
       </div>
+      <div class="settings-actions data-actions">
+        <button class="btn btn-ghost" id="set-export" type="button">Export backup</button>
+        <button class="btn btn-ghost" id="set-import" type="button">Import</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
       <button class="btn btn-danger" id="set-reset" type="button">Erase everything &amp; start over</button>
+    </form>
+  </dialog>
+
+  <!-- ====================== ADD HORIZON ====================== -->
+  <dialog id="horizon-dialog" class="settings">
+    <form method="dialog">
+      <h2>A date worth living toward</h2>
+      <label class="field"><span>What is it?</span>
+        <input type="text" id="hz-name" maxlength="60" placeholder="e.g. Amma's 70th, Tokyo trip" autocomplete="off">
+      </label>
+      <label class="field"><span>When?</span><input type="date" id="hz-date"></label>
+      <p class="ob-error" id="hz-error" hidden>Give it a name and a date that hasn't happened yet.</p>
+      <div class="settings-actions">
+        <button class="btn btn-primary" id="hz-save" value="save">Add it</button>
+        <button class="btn btn-ghost" value="cancel">Cancel</button>
+      </div>
     </form>
   </dialog>
 

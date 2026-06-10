@@ -13,10 +13,19 @@ device and updating in real time:
 - **The map** — every week of your life as one dot on one screen
   (~4,700 of them). Spent weeks burn ember; the bright pulsing dot is this
   week. Tap any dot to time-travel.
+- **Zoom** — today, this week, this month, and this year as live progress
+  bars: the same countdown at four magnifications.
+- **On the horizon** — name the dates you're living toward (birthdays, trips,
+  finish lines). Each becomes a live countdown and a gold ring on your week
+  map.
 - **What remains** — the arithmetic no one does: sunrises, Saturdays, summers,
   full moons, books you'll still read, and the hardest number of all — how many
   more times you may see the people you love.
+- **Today** — one line each morning on what would make today count, with a
+  streak to keep you honest.
 - **Share** — generates a share card of your week map (Web Share API).
+- **Backup** — export/import all your data as JSON from Settings (everything
+  is device-local, so back it up before switching phones).
 
 ## Privacy
 
@@ -31,9 +40,11 @@ like a native app.
 
 ## Hosting
 
-Pushing to `main` triggers `.github/workflows/deploy.yml`, which enables and
-deploys GitHub Pages automatically — the app goes live at
-<https://vigneshbhaskarraj.github.io/finite/> with no manual setup.
+The app is live at <https://vigneshbhaskarraj.github.io/finite/>.
+
+GitHub Pages serves the `gh-pages` branch. Pushing to `main` triggers
+`.github/workflows/deploy.yml`, which mirrors `main` into `gh-pages` —
+no build step, no manual settings.
 
 ## Stack
 

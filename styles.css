@@ -327,6 +327,122 @@ input[type="range"] {
 
 #btn-add-parent { width: 100%; margin-top: 0.4rem; }
 
+/* ---------- zoom ---------- */
+
+.zoom-rows { display: flex; flex-direction: column; gap: 1.05rem; }
+.zoom-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.35rem; }
+.zoom-name { font-size: 0.72rem; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.16em; }
+.zoom-pct {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+  color: var(--ember-soft);
+}
+.zoom-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.zoom-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--ember-soft), var(--ember));
+  border-radius: inherit;
+}
+
+/* ---------- horizons ---------- */
+
+.lg-gold { color: #ffd684; }
+
+.horizons { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1rem; }
+.horizons-empty { color: var(--ink-faint); font-size: 0.85rem; }
+
+.horizon {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.horizon.gold { border-color: color-mix(in srgb, #ffd684 50%, var(--line)); }
+.horizon.past { opacity: 0.55; }
+
+.horizon-main { flex: 1; min-width: 0; }
+.horizon-name { font-size: 0.95rem; color: var(--ink); overflow-wrap: anywhere; }
+.horizon-when { font-size: 0.73rem; color: var(--ink-faint); margin-top: 0.15rem; }
+
+.horizon-count { text-align: right; white-space: nowrap; }
+.horizon-num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.35rem;
+  color: var(--ember-soft);
+}
+.horizon.past .horizon-num { color: var(--ink-faint); }
+.horizon-unit {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.horizon-x {
+  background: none;
+  border: 0;
+  color: var(--ink-faint);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.35rem 0.4rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#btn-add-horizon { width: 100%; }
+
+.week-tip .tip-ev { color: #ffd684; }
+
+/* ---------- today's intention ---------- */
+
+.intent-form { display: flex; gap: 0.6rem; }
+.intent-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.95rem;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  padding: 0.8rem 1.1rem;
+}
+.intent-form .btn { padding: 0.8rem 1.4rem; }
+
+.intent-streak { color: var(--ember-soft); font-size: 0.82rem; margin-top: 0.9rem; }
+
+.intent-log { list-style: none; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.intent-log li {
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+  border-left: 2px solid var(--line);
+  padding-left: 0.8rem;
+}
+.intent-log li span {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ---------- backup actions ---------- */
+
+.data-actions { justify-content: stretch; }
+.data-actions .btn { flex: 1; }
+
 /* ---------- quote / footer ---------- */
 
 .quote {

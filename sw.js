@@ -1,7 +1,7 @@
 /* FINITE service worker — precache everything, work offline forever. */
 'use strict';
 
-const VERSION = 'finite-v1.0.0';
+const VERSION = 'finite-v1.1.0';
 const ASSETS = [
   './',
   'index.html',

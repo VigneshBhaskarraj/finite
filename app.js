@@ -18,7 +18,8 @@ const fmtInt = new Intl.NumberFormat('en-US');
 
 /* ============================== state ============================== */
 
-let state = null;          // { birth:'YYYY-MM-DD', horizon:90, books:12, parent:{age,visits}|null }
+let state = null;          // { birth:'YYYY-MM-DD', horizon:90, books:12, parent:{age,visits}|null,
+                           //   events:[{id,name,date}], intents:{'YYYY-MM-DD':text} }
 let birthDate = null;
 let horizonDate = null;
 let deferredInstall = null;
@@ -30,6 +31,9 @@ function loadState() {
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!s.birth || !s.horizon) return null;
+    // fields added after v1.0 — backfill for stored and imported states
+    if (!Array.isArray(s.events)) s.events = [];
+    if (!s.intents || typeof s.intents !== 'object') s.intents = {};
     return s;
   } catch { return null; }
 }
@@ -61,7 +65,29 @@ function vibrate(pattern) {
   try { navigator.vibrate && navigator.vibrate(pattern); } catch { /* no-op */ }
 }
 
+function localISO(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// parse 'YYYY-MM-DD' in local time — new Date(string) would read it as UTC
+function dateFromISO(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function uid() {
+  return (crypto.randomUUID && crypto.randomUUID()) || (Date.now() + '-' + Math.random().toString(36).slice(2));
+}
+
+function eventWeekIdx(ev) {
+  return Math.floor((dateFromISO(ev.date).getTime() - birthDate.getTime()) / WEEK_MS);
+}
+
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+const esc = (s) => s.replace(/[&<>"']/g, (c) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
 
 /* ============================== onboarding ============================== */
 
@@ -106,6 +132,8 @@ function startOnboarding() {
         horizon: parseInt($('ob-horizon').value, 10),
         books: 12,
         parent,
+        events: [],
+        intents: {},
       };
       saveState();
       deriveDates();
@@ -152,7 +180,26 @@ function tick(now) {
   // percentage of weeks, 9 decimal places — visibly moving
   $('v-pct').textContent = (frac * 100).toFixed(9) + ' %';
 
+  // zoom: today / this week / this month / this year
+  const d = new Date(t);
+  const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const weekStart = dayStart - ((d.getDay() + 6) % 7) * DAY_MS; // Monday
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  const yearStart = new Date(d.getFullYear(), 0, 1).getTime();
+  const yearEnd = new Date(d.getFullYear() + 1, 0, 1).getTime();
+  setZoom('day', (t - dayStart) / DAY_MS);
+  setZoom('week', (t - weekStart) / WEEK_MS);
+  setZoom('month', (t - monthStart) / (monthEnd - monthStart));
+  setZoom('year', (t - yearStart) / (yearEnd - yearStart));
+
   requestAnimationFrame(tick);
+}
+
+function setZoom(which, frac) {
+  const f = Math.min(1, Math.max(0, frac));
+  $(`z-${which}-pct`).textContent = (f * 100).toFixed(6) + ' %';
+  $(`z-${which}-fill`).style.width = (f * 100).toFixed(3) + '%';
 }
 
 function lifeClockCaption(hour) {
@@ -194,6 +241,19 @@ function buildGrid() {
   const o = grid.off.getContext('2d');
   o.scale(dpr, dpr);
   drawDots(o, grid.cols, grid.rows, grid.cell, grid.weekIdx, { skipCurrent: true });
+
+  // gold rings on weeks that hold a named horizon
+  o.strokeStyle = '#ffd684';
+  o.lineWidth = Math.max(1, grid.cell * 0.14);
+  for (const ev of state.events) {
+    const idx = eventWeekIdx(ev);
+    if (idx < 0 || idx >= grid.total) continue;
+    const x = (idx % grid.cols) * grid.cell + grid.cell / 2;
+    const y = Math.floor(idx / grid.cols) * grid.cell + grid.cell / 2;
+    o.beginPath();
+    o.arc(x, y, grid.cell * 0.46, 0, Math.PI * 2);
+    o.stroke();
+  }
 
   $('v-weeknum').textContent = fmtInt.format(grid.weekIdx + 1);
   $('v-weekstotal').textContent = '~' + fmtInt.format(grid.total);
@@ -280,7 +340,9 @@ function wireGridTap() {
       ? `spent · you were ${age}`
       : idx === grid.weekIdx ? 'this is your week — you are here'
       : `waiting · you'll be ${age}`;
-    tip.innerHTML = `Week ${fmtInt.format(idx + 1)} — ${when}<small>${label}</small>`;
+    const names = state.events.filter((ev) => eventWeekIdx(ev) === idx).map((ev) => ev.name);
+    const evLine = names.length ? `<small class="tip-ev">◌ ${esc(names.join(' · '))}</small>` : '';
+    tip.innerHTML = `Week ${fmtInt.format(idx + 1)} — ${when}<small>${label}</small>${evLine}`;
     tip.style.left = (col + 0.5) * grid.cell + 'px';
     tip.style.top = row * grid.cell + 'px';
     tip.hidden = false;
@@ -329,6 +391,206 @@ function renderRemains() {
     parentCard.hidden = true;
     addBtn.hidden = false;
   }
+}
+
+/* ============================== horizons ============================== */
+
+const MAX_EVENTS = 12;
+
+function renderHorizons() {
+  const list = $('horizons-list');
+  list.innerHTML = '';
+  const items = [...state.events].sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  if (!items.length) {
+    const p = document.createElement('p');
+    p.className = 'horizons-empty';
+    p.textContent = 'Nothing on the horizon yet. That’s either peace or a problem.';
+    list.appendChild(p);
+    return;
+  }
+
+  const today = localISO();
+  for (const ev of items) {
+    const days = Math.round((dateFromISO(ev.date).getTime() - dateFromISO(today).getTime()) / DAY_MS);
+    const idx = eventWeekIdx(ev);
+
+    const row = document.createElement('div');
+    row.className = 'horizon' + (days < 0 ? ' past' : days <= 14 ? ' gold' : '');
+
+    const main = document.createElement('div');
+    main.className = 'horizon-main';
+    const name = document.createElement('div');
+    name.className = 'horizon-name';
+    name.textContent = ev.name;
+    const when = document.createElement('div');
+    when.className = 'horizon-when';
+    const dateLabel = dateFromISO(ev.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    when.textContent = idx >= 0 && idx < grid.total
+      ? `${dateLabel} · week ${fmtInt.format(idx + 1)} on your map`
+      : dateLabel;
+    main.append(name, when);
+
+    const count = document.createElement('div');
+    count.className = 'horizon-count';
+    const num = document.createElement('div');
+    num.className = 'horizon-num';
+    const unit = document.createElement('span');
+    unit.className = 'horizon-unit';
+    if (days > 0) {
+      num.textContent = fmtInt.format(days);
+      unit.textContent = days >= 14 ? `days · ${Math.floor(days / 7)} weeks` : days === 1 ? 'day — tomorrow' : 'days';
+    } else if (days === 0) {
+      num.textContent = '0';
+      unit.textContent = 'days — it’s today';
+    } else {
+      num.textContent = fmtInt.format(-days);
+      unit.textContent = -days === 1 ? 'day ago' : 'days ago';
+    }
+    count.append(num, unit);
+
+    const x = document.createElement('button');
+    x.className = 'horizon-x';
+    x.type = 'button';
+    x.setAttribute('aria-label', `Remove ${ev.name}`);
+    x.dataset.remove = ev.id;
+    x.textContent = '✕';
+
+    row.append(main, count, x);
+    list.appendChild(row);
+  }
+}
+
+function wireHorizons() {
+  const dlg = $('horizon-dialog');
+
+  $('btn-add-horizon').addEventListener('click', () => {
+    $('hz-name').value = '';
+    $('hz-date').value = '';
+    $('hz-date').min = localISO();
+    $('hz-error').hidden = true;
+    dlg.showModal();
+  });
+
+  $('hz-save').addEventListener('click', (e) => {
+    const name = $('hz-name').value.trim().slice(0, 60);
+    const date = $('hz-date').value;
+    const err = $('hz-error');
+    if (!name || !date || date < localISO()) {
+      e.preventDefault();
+      err.textContent = 'Give it a name and a date that hasn’t happened yet.';
+      err.hidden = false;
+      return;
+    }
+    if (state.events.length >= MAX_EVENTS) {
+      e.preventDefault();
+      err.textContent = `${MAX_EVENTS} is plenty — let one go before adding another.`;
+      err.hidden = false;
+      return;
+    }
+    state.events.push({ id: uid(), name, date });
+    saveState();
+    renderHorizons();
+    buildGrid();
+    vibrate(12);
+  });
+
+  $('horizons-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-remove]');
+    if (!btn) return;
+    state.events = state.events.filter((ev) => ev.id !== btn.dataset.remove);
+    saveState();
+    renderHorizons();
+    buildGrid();
+  });
+}
+
+/* ============================== today's intention ============================== */
+
+function intentStreak() {
+  let n = 0;
+  const d = new Date();
+  if (!state.intents[localISO(d)]) d.setDate(d.getDate() - 1); // a streak can still be alive from yesterday
+  while (state.intents[localISO(d)]) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+function renderIntent() {
+  const today = localISO();
+  const current = state.intents[today] || '';
+  $('intent-input').value = current;
+  $('intent-save').textContent = current ? 'Update' : 'Set';
+
+  const streakEl = $('intent-streak');
+  const n = intentStreak();
+  if (n > 0) {
+    streakEl.hidden = false;
+    streakEl.textContent = current
+      ? `● ${n} day${n > 1 ? 's' : ''} in a row of saying it out loud.`
+      : `● ${n}-day streak on the line — today is still unwritten.`;
+  } else {
+    streakEl.hidden = true;
+  }
+
+  const log = $('intent-log');
+  log.innerHTML = '';
+  const past = Object.keys(state.intents).filter((k) => k !== today).sort().reverse().slice(0, 3);
+  for (const k of past) {
+    const li = document.createElement('li');
+    const when = document.createElement('span');
+    when.textContent = dateFromISO(k).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    li.appendChild(when);
+    li.appendChild(document.createTextNode(state.intents[k]));
+    log.appendChild(li);
+  }
+}
+
+function wireIntent() {
+  $('intent-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = $('intent-input').value.trim().slice(0, 140);
+    const today = localISO();
+    if (v) state.intents[today] = v;
+    else delete state.intents[today];
+    // keep a bounded journal — the latest ~400 days
+    const keys = Object.keys(state.intents).sort();
+    while (keys.length > 400) delete state.intents[keys.shift()];
+    saveState();
+    renderIntent();
+    vibrate(12);
+    $('intent-input').blur();
+  });
+}
+
+/* ============================== backup ============================== */
+
+function wireBackup() {
+  $('set-export').addEventListener('click', () => {
+    const payload = { app: 'finite', version: 1, exportedAt: new Date().toISOString(), state };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `finite-backup-${localISO()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+
+  $('set-import').addEventListener('click', () => $('import-file').click());
+
+  $('import-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      const s = data.state || data; // accept a full backup or a bare state object
+      if (!s || !s.birth || !s.horizon) throw new Error('not a finite backup');
+      localStorage.setItem(STORE_KEY, JSON.stringify(s));
+      location.reload();
+    } catch {
+      alert('That file doesn’t look like a FINITE backup.');
+      e.target.value = '';
+    }
+  });
 }
 
 /* ============================== perspective ============================== */
@@ -481,6 +743,7 @@ function wireSettings() {
     deriveDates();
     buildGrid();
     renderRemains();
+    renderHorizons();
     checkOvertime();
   });
 
@@ -518,9 +781,15 @@ function bootApp() {
   buildGrid();
   wireGridTap();
   renderRemains();
+  renderHorizons();
+  renderIntent();
+  $('z-year-name').textContent = String(new Date().getFullYear());
   startQuotes();
   wireInstall();
   wireSettings();
+  wireHorizons();
+  wireIntent();
+  wireBackup();
   checkOvertime();
   requestAnimationFrame(tick);
 
@@ -533,9 +802,20 @@ function bootApp() {
     }
   });
 
-  // refresh the daily numbers just after midnight
+  scheduleMidnightRefresh();
+}
+
+// refresh the daily numbers just after every midnight, not just the first one
+function scheduleMidnightRefresh() {
   const msToMidnight = new Date().setHours(24, 0, 5, 0) - Date.now();
-  setTimeout(() => { renderRemains(); checkOvertime(); }, msToMidnight);
+  setTimeout(() => {
+    renderRemains();
+    renderHorizons();
+    renderIntent();
+    checkOvertime();
+    $('z-year-name').textContent = String(new Date().getFullYear());
+    scheduleMidnightRefresh();
+  }, msToMidnight);
 }
 
 state = loadState();
