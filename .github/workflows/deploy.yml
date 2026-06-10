@@ -1,33 +1,27 @@
 name: Deploy FINITE to GitHub Pages
 
+# Pages on this repo serves from the gh-pages branch (auto-enabled when that
+# branch first appeared). GITHUB_TOKEN cannot create or reconfigure the Pages
+# site (admin-only API), so instead of the configure-pages/upload-artifact
+# flow we simply mirror main into gh-pages — the site is plain static files
+# with no build step, and every gh-pages push triggers a Pages deployment.
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          # creates the Pages site automatically on first run — no settings needed
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Mirror main to gh-pages
+        run: git push --force origin HEAD:gh-pages
